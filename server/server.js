@@ -24,16 +24,21 @@ io.on('connection', socket => {
 
 
     // Socket create new email
-    socket.on('createMessage', message => {
+    socket.on('createMessage', (message, callback) => {
         console.log('createMessage', message)
         //Server relay socket new message to ALL connected sockets
         io.emit('newMessage', generateMessage(message.from, message.text));
-    })
+        callback('This is from the server');
+    });
+
+    socket.on('createLocationMessage', coords => {
+        io.emit('newMessage', generateMessage('Admin', `${coords.latitude}, ${coords.longitude}`))
+    });
 
     // Socket disconnecting
     socket.on('disconnect', () => {
         console.log('User was disconnected')
-    })
+    });
 });
 
 server.listen(port, () => {
