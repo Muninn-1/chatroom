@@ -28,7 +28,7 @@ io.on('connection', socket => {
         console.log('createMessage', message)
         //Server relay socket new message to ALL connected sockets
         io.emit('newMessage', generateMessage(message.from, message.text));
-        callback('This is from the server');
+        callback();
     });
 
     socket.on('createLocationMessage', coords => {
