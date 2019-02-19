@@ -5,6 +5,7 @@ const express = require('express');
 const socketIO = require('socket.io');
 
 // Initialisation 
+const { generateMessage } = require('./utils/message')
 const publicPath = path.join(__dirname, '../public')
 const port = process.env.PORT || 3002;
 let app = express();
@@ -17,15 +18,16 @@ app.use(express.static(publicPath));
 io.on('connection', socket => {
     console.log('New user connected');
 
-    //Server emit new message
-    socket.emit('newMessage', {
-        from: 'Not Oscar',
-        text: 'Go to hell!'
-    });
+    // Greeting new user & tell to other users
+    socket.emit('newMessage', generateMessage('Admin', 'Welcome to the chat app'));
+    socket.broadcast.emit('newMessage', generateMessage('Admin', 'New User joined'));
+
 
     // Socket create new email
     socket.on('createMessage', message => {
         console.log('createMessage', message)
+        //Server relay socket new message to ALL connected sockets
+        io.emit('newMessage', generateMessage(message.from, message.text));
     })
 
     // Socket disconnecting
