@@ -33,12 +33,13 @@ io.on('connection', socket => {
 
     socket.on('createLocationMessage', coords => {
         console.log('locationMessage', coords )
-        io.emit('newLocationMessage', generateLocationMessage('Admin', coords.latitude, coords.longitude));
+        io.emit('newLocationMessage', generateLocationMessage(coords.from, coords.latitude, coords.longitude));
     });
 
     // Socket disconnecting
     socket.on('disconnect', () => {
         console.log('User was disconnected')
+        socket.broadcast.emit('newMessage', generateMessage('Admin', 'User was disconnected'));
     });
 });
 

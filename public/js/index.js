@@ -1,6 +1,22 @@
 let socket = io();
 let output = document.getElementById('messages');
 
+const scrollToBottom = () => {
+    // Selectors
+    let messages = jQuery('#messages');
+    let newMessage = messages.children('li:last-child');
+    // Heigths
+    let clientHeight = messages.prop('clientHeight');
+    let scrollTop = messages.prop('scrollTop');
+    let scrollHeight = messages.prop('scrollHeight');
+    let newMessageHeight = newMessage.innerHeight();
+    let lastMessageHeight = newMessage.prev().innerHeight();
+
+    if(clientHeight + scrollTop + newMessageHeight + lastMessageHeight >= scrollHeight) {
+        messages.scrollTop(scrollHeight);
+    }
+};
+
 socket.on('connect', () => {
     console.log('Connected to server')
 });
@@ -10,21 +26,29 @@ socket.on('disconnect', () => {
 });
 
 socket.on('newMessage', message => {
-    let formattedTime = moment(message.createdAt).format('MMM Do, YYYY - HH:mm');
-    let li = jQuery('<li></li>');
-    li.text(`${formattedTime} -- ${message.from}: ${message.text}`);
+    let formattedTime = moment(message.createdAt).format('HH:mm');
+    let template = jQuery('#message-template').html();
+    let html = Mustache.render(template, {
+        text: message.text,
+        from: message.from,
+        createdAt: formattedTime
+    });
 
-    jQuery('#messages').append(li);
+    jQuery('#messages').append(html);
+    scrollToBottom();
 });
 
 socket.on('newLocationMessage', message =>  {
-    let formattedTime = moment(message.createdAt).format('MMM Do, YYYY - HH:mm');
-    let li = jQuery('<li></li>');
-    let a = jQuery('<a target="_blank">My current location</a>');
+    let formattedTime = moment(message.createdAt).format('HH:mm');
+    let template = jQuery('#location-message-template').html();
+    let html = Mustache.render(template, {
+        url: message.url,
+        from: message.from,
+        createdAt: formattedTime
+    });
 
-    li.text(`${formattedTime} -- ${message.from}: `);
-    a.attr('href', message.url)
-    jQuery('#messages').append(li.append(a));
+    jQuery('#messages').append(html);
+    scrollToBottom();
 });
 
 
@@ -55,6 +79,7 @@ locationButton.on('click', () => {
         locationButton.removeAttr('disabled').text('Send location');
 
         socket.emit('createLocationMessage', {
+            from: 'User',
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
         });
