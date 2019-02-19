@@ -17,6 +17,16 @@ socket.on('newMessage', message => {
     jQuery('#messages').append(li);
 });
 
+socket.on('newLocationMessage', message =>  {
+    let li = jQuery('<li></li>');
+    let a = jQuery('<a target="_blank">My current location</a>');
+
+    li.text(`${message.from}: `);
+    a.attr('href', message.url)
+    jQuery('#messages').append(li.append(a));
+});
+
+
 jQuery('#message-form').on('submit', event => {
     event.preventDefault();
 
@@ -28,6 +38,7 @@ jQuery('#message-form').on('submit', event => {
     });
 });
 
+
 let locationButton = jQuery('#send-location');
 locationButton.on('click', () => {
     if(!navigator.geolocation) {
@@ -35,6 +46,7 @@ locationButton.on('click', () => {
     }
 
     navigator.geolocation.getCurrentPosition(position => {
+        console.log(position.coords)
         socket.emit('createLocationMessage', {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
