@@ -5,12 +5,15 @@ const express = require('express');
 const socketIO = require('socket.io');
 
 // Initialisation 
-const { generateMessage, generateLocationMessage } = require('./utils/message')
-const publicPath = path.join(__dirname, '../public')
+const { generateMessage, generateLocationMessage } = require('./utils/message');
+const { isRealString } = require('./utils/validation');
+const { Users } = require('./utils/users');
+const publicPath = path.join(__dirname, '../public');
 const port = process.env.PORT || 3002;
 let app = express();
 let server = http.createServer(app);
 let io = socketIO(server);
+let users = new Users();
 
 app.use(express.static(publicPath));
 
@@ -18,31 +21,76 @@ app.use(express.static(publicPath));
 io.on('connection', socket => {
     console.log('New user connected');
 
-    // Greeting new user & tell to other users
-    socket.emit('newMessage', generateMessage('Admin', 'Welcome to the chat app'));
-    socket.broadcast.emit('newMessage', generateMessage('Admin', 'New User joined'));
+    // Joining private room
+    socket.on('join', (params, callback) => {
+        let user = users.getUserList(params.room).filter(user => user === params.name)
+        if(!isRealString(params.name) || !isRealString(params.room)) {
+            
+            return callback('Name & room name are required!');
+        };
+        if(user.length > 0) {
+            return callback('Name already taken!');
+        };
 
+        socket.join(params.room, () => {
+            
+            users.removeUser(socket.id);
+            users.addUser(socket.id, params.name, params.room);
 
-    // Socket create new email
-    socket.on('createMessage', (message, callback) => {
-        console.log('createMessage', message)
-        //Server relay socket new message to ALL connected sockets
-        io.emit('newMessage', generateMessage(message.from, message.text));
+            io.to(params.room).emit('updateUserList', users.getUserList(params.room));
+
+        });
+        
+        // Greeting new user & tell to other users
+        socket.emit('newMessage', generateMessage('Admin', 'Welcome to the chat app'));
+        socket.broadcast.to(params.room).emit('newMessage', generateMessage('Admin', `${params.name} joined the room.`));
+
         callback();
     });
 
+    // Socket sending new message
+    socket.on('createMessage', (message, callback) => {
+        let user =  users.getUser(socket.id);
+
+        if(user && isRealString(message.text)) {
+            // Server relay socket new message to ALL connected sockets
+            io.to(user.room).emit('newMessage', generateMessage(user.name, message.text));
+        }
+        callback();
+    });
+
+    // Socket sending geolocation
     socket.on('createLocationMessage', coords => {
-        console.log('locationMessage', coords )
-        io.emit('newLocationMessage', generateLocationMessage(coords.from, coords.latitude, coords.longitude));
+        let user =  users.getUser(socket.id);
+
+        if(user) {
+            io.to(user.room).emit('newLocationMessage', generateLocationMessage(user.name, coords.latitude, coords.longitude));
+        }
     });
 
     // Socket disconnecting
     socket.on('disconnect', () => {
         console.log('User was disconnected')
-        socket.broadcast.emit('newMessage', generateMessage('Admin', 'User was disconnected'));
+        let user = users.removeUser(socket.id);
+        if(user) {
+            io.to(user.room).emit('updateUserList', users.getUserList(user.room));
+            socket.broadcast.to(user.room).emit('newMessage', generateMessage('Admin', `${user.name} has left.`));
+        }
+    });
+
+    // Socket leaving room
+    socket.on('leaving', () => {
+        let user = users.removeUser(socket.id);
+
+        if(user) {
+            io.to(user.room).emit('updateUserList', users.getUserList(user.room));
+            socket.broadcast.to(user.room).emit('newMessage', generateMessage('Admin', `${user.name} has left.`));
+            socket.leave(user.room);
+        }
     });
 });
 
+// Launching socket server
 server.listen(port, () => {
     console.log(`Server is up on port ${port}`);
 })

@@ -18,11 +18,31 @@ const scrollToBottom = () => {
 };
 
 socket.on('connect', () => {
-    console.log('Connected to server')
+    let params = jQuery.deparam(window.location.search);
+    
+    socket.emit('join', params, error => {
+        console.log("plop", error);
+        if(error) {
+            alert(error);
+            window.location.href = '/';
+        } else {
+            console.log('No error');
+        }
+    });
 });
 
 socket.on('disconnect', () => {
     console.log('Disconnected from server')
+});
+
+socket.on('updateUserList', users => {
+    var ol = jQuery('<ul></ul>');
+
+    users.forEach(user => {
+        ol.append(jQuery('<li></li>').text(user))
+    });
+
+    jQuery('#users').html(ol);
 });
 
 socket.on('newMessage', message => {
@@ -52,7 +72,12 @@ socket.on('newLocationMessage', message =>  {
 });
 
 
-jQuery('#message-form').on('submit', event => {
+
+let sendButton = jQuery('#message-form');
+let leaveButton = jQuery("#leave-room");
+let locationButton = jQuery('#send-location');
+
+sendButton.on('submit', event => {
     event.preventDefault();
 
     let messageTextbox = jQuery('[name=message]');
@@ -65,8 +90,11 @@ jQuery('#message-form').on('submit', event => {
     });
 });
 
+leaveButton.on('click', () => {
+    socket.emit('leaving');
+    window.location.href = '/';
+});
 
-let locationButton = jQuery('#send-location');
 locationButton.on('click', () => {
     if(!navigator.geolocation) {
         return alert('Geolocation not supported by your browser.');
