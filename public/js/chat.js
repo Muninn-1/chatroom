@@ -1,6 +1,7 @@
 let socket = io();
 let output = document.getElementById('messages');
 
+// Scrollbar handler
 const scrollToBottom = () => {
     // Selectors
     let messages = jQuery('#messages');
@@ -17,6 +18,7 @@ const scrollToBottom = () => {
     }
 };
 
+// Socket connect to socket server
 socket.on('connect', () => {
     let params = jQuery.deparam(window.location.search);
     
@@ -31,20 +33,35 @@ socket.on('connect', () => {
     });
 });
 
+// Socket disconnectg from socket server
 socket.on('disconnect', () => {
     console.log('Disconnected from server')
 });
 
+// Update users list on chat window
 socket.on('updateUserList', users => {
     var ol = jQuery('<ul></ul>');
 
     users.forEach(user => {
-        ol.append(jQuery('<li></li>').text(user))
+    ol.append(jQuery(`<li>${user}  <img style="width:10%;" src="https://www.countryflags.io/fr/shiny/64.png"></li>`))
     });
 
     jQuery('#users').html(ol);
 });
 
+// Update rooms list on chat window
+socket.on('updateRoomList', (rooms) => {
+    console.log('OK', rooms)
+    var ol = jQuery('<ul></ul>');
+
+    rooms.forEach(room => {
+        ol.append(jQuery('<li></li>').text(room))
+    });
+
+    jQuery('#rooms').html(ol);
+});
+
+// Display message on chat window
 socket.on('newMessage', message => {
     let formattedTime = moment(message.createdAt).format('HH:mm');
     let template = jQuery('#message-template').html();
@@ -58,6 +75,7 @@ socket.on('newMessage', message => {
     scrollToBottom();
 });
 
+// Display location message on chat window
 socket.on('newLocationMessage', message =>  {
     let formattedTime = moment(message.createdAt).format('HH:mm');
     let template = jQuery('#location-message-template').html();
@@ -72,11 +90,12 @@ socket.on('newLocationMessage', message =>  {
 });
 
 
-
+// Buttons handlers
 let sendButton = jQuery('#message-form');
 let leaveButton = jQuery("#leave-room");
 let locationButton = jQuery('#send-location');
 
+// Sending message button handler
 sendButton.on('submit', event => {
     event.preventDefault();
 
@@ -90,11 +109,13 @@ sendButton.on('submit', event => {
     });
 });
 
+// Leaving button handler
 leaveButton.on('click', () => {
-    socket.emit('leaving');
+    // socket.emit('leaving');
     window.location.href = '/';
 });
 
+// Sending location message button handler
 locationButton.on('click', () => {
     if(!navigator.geolocation) {
         return alert('Geolocation not supported by your browser.');

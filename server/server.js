@@ -7,7 +7,8 @@ const socketIO = require('socket.io');
 // Initialisation 
 const { generateMessage, generateLocationMessage } = require('./utils/message');
 const { isRealString } = require('./utils/validation');
-const { Users } = require('./utils/users');
+const { Users } = require('./utils/users')
+;
 const publicPath = path.join(__dirname, '../public');
 const port = process.env.PORT || 3002;
 let app = express();
@@ -23,7 +24,9 @@ io.on('connection', socket => {
 
     // Joining private room
     socket.on('join', (params, callback) => {
-        let user = users.getUserList(params.room).filter(user => user === params.name)
+        let user = users.getUserList(params.room).filter(user => user === params.name);
+        let rooms = users.getRoomList(params.room);
+    
         if(!isRealString(params.name) || !isRealString(params.room)) {
             
             return callback('Name & room name are required!');
@@ -35,9 +38,12 @@ io.on('connection', socket => {
         socket.join(params.room, () => {
             
             users.removeUser(socket.id);
-            users.addUser(socket.id, params.name, params.room);
-
+            users.addUser(socket.id, params.name, params.language, params.room);
             io.to(params.room).emit('updateUserList', users.getUserList(params.room));
+            io.emit('updateRoomList', rooms);  
+            console.log("UserList ====>", users)
+            console.log("RoomList ====>", rooms)          
+
 
         });
         
@@ -68,24 +74,31 @@ io.on('connection', socket => {
         }
     });
 
+    // Socket leaving room
+    // socket.on('leaving', () => {
+    //     let user = users.removeUser(socket.id);
+    //     console.log(`${user.name} has leaved a room`)
+    //     let rooms = users.getRoomList();
+    //     console.log("RoomList ====>", rooms)
+    //     if(user) {
+    //         io.to(user.room).emit('updateUserList', users.getUserList(user.room));
+    //         socket.broadcast.to(user.room).emit('newMessage', generateMessage('Admin', `${user.name} has left.`));
+    //         socket.leave(user.room);
+    //     }
+    // });
+    
     // Socket disconnecting
     socket.on('disconnect', () => {
-        console.log('User was disconnected')
         let user = users.removeUser(socket.id);
-        if(user) {
-            io.to(user.room).emit('updateUserList', users.getUserList(user.room));
-            socket.broadcast.to(user.room).emit('newMessage', generateMessage('Admin', `${user.name} has left.`));
-        }
-    });
-
-    // Socket leaving room
-    socket.on('leaving', () => {
-        let user = users.removeUser(socket.id);
+        console.log(`User  was disconnected`)
+        let rooms = users.getRoomList();
+        console.log("RoomList ====>", rooms)
+        console.log("UserList ====>", users)
 
         if(user) {
             io.to(user.room).emit('updateUserList', users.getUserList(user.room));
+            io.emit('updateRoomList', rooms);            
             socket.broadcast.to(user.room).emit('newMessage', generateMessage('Admin', `${user.name} has left.`));
-            socket.leave(user.room);
         }
     });
 });
